@@ -14,10 +14,11 @@ NaiveBayes <- R6Class("NaiveBayes",
                         classes = NA,
                         groupes = NA,
                         nb.is.numeric = FALSE,
+                        epsilon = NA,
                         
                         initialize = function(data, features, target) {
                           # check if there is data
-                          if(missing(data)){
+                          if(missing(data)) {
                             stop("You requires a data file")
                           }
                           
@@ -43,12 +44,23 @@ NaiveBayes <- R6Class("NaiveBayes",
                             stop("Fit method requires a dataframe")
                           }
                           
+                          if(any(is.na(X))) {
+                            stop("Dataframe can't contains NA.")
+                          }
+                          
                           # check if the target is qualitative
                           if(!is.character(y) & !is.factor(y)){
                             stop("The target variable is necessarily qualitative.")
                           }
                           
-                          # get the predictor variables (will be usefull for checking type of columns)
+                          if(any(is.na(y))) {
+                            stop("y can't contains NA.")
+                          }
+                          
+                          # get the epsilon (useful for the summary)
+                          self$epsilon <- epsilon
+                          
+                          # get the predictor variables (will be useful for checking type of columns)
                           self$X <- X
                           
                           # check if their is a numerical column in the dataframe
@@ -165,11 +177,82 @@ NaiveBayes <- R6Class("NaiveBayes",
                         },
                         
                         print = function() {
-                          print("TEST DU PRINT")
+                          cat("Categorical Naive Bayes\n")
+                          cat("---------PRINT---------\n")
+                          cat("\n")
+                          
+                          cat("OBSERVATIONS ----------\n")
+                          cat("Number of observations in the training dataset: ", nrow(self$X), "\n")
+                          cat("\n")
+                          
+                          cat("PREDICTIVE VARIABLE ---\n")
+                          cat("Predictive variables: ", paste(self$features, collapse = ", "), "\n")
+                          cat("Number of predictive variables: ", length(self$features), "\n")
+                          cat("\n")
+                          
+                          cat("TARGET VARIABLE -------\n")
+                          cat("Target variable: ", self$target, "\n")
+                          cat("Classes in the target variable: ", paste(self$classes, collapse = ", "), "\n")
+                          cat("Number of classes in the target variable: ", length(self$classes), "\n")
+                          cat("\n")
                         },
                         
                         summary = function() {
-                          print("TEST DU SUMMARY")
+                          cat("Categorical Naive Bayes\n")
+                          cat("--------SUMMARY--------\n")
+                          cat("\n")
+                          
+                          cat("PARAMETERS ------------\n")
+                          cat("Epsilon: ", self$epsilon, "\n")
+                          cat("\n")
+                          
+                          cat("PREPROCESSING ---------\n")
+                          cat("Dataframe contains numeric variables :", self$nb.is.numeric, "\n")
+                          cat("Preprocessing done : ", self$nb.is.numeric, "\n")
+                          cat("\n")
+                          
+                          cat("STATISTICS ------------\n")
+                          # get the number of the maximum modality for all features
+                          max.mods <- sapply(self$X, function(feature) {
+                            return(max(table(feature)))
+                          })
+                          # get the feature with the highest modality
+                          max.feature <- self$features[which.max(max.mods)]
+                          # get the value of this modality
+                          max.mod <- max.mods[[max.feature]]
+                          # get the name of this modality
+                          name.max.mod <- names(table(self$X[max.feature])[which.max(max.mod)])
+                          cat("Max. observations:", name.max.mod, "\n")
+                          cat("Number of observations: ", max.mod, "\n")
+                          
+                          # get the number of the minimum modality for all features
+                          min.mods <- sapply(self$X, function(feature) {
+                            return(min(table(feature)))
+                          })
+                          # get the feature with the lowest modality
+                          min.feature <- self$features[which.min(min.mods)]
+                          # get the value of this modality
+                          min.mod <- min.mods[[min.feature]]
+                          # get the name of this modality
+                          name.min.mod <- names(table(self$X[min.feature])[which.min(min.mod)])
+                          cat("Min. observations:", name.min.mod, "\n")
+                          cat("Number of observations: ", min.mod, "\n")
+                          cat("\n")
+                          
+                          # get the unique values for each features 
+                          unique.values <- lapply(self$X, unique)
+                          # get the number of unique values for each features
+                          unique.values.number <- lapply(unique.values, length)
+                          # for each unique value
+                          for (i in seq_along(unique.values.number)) {
+                            cat("Feature: ", names(unique.values.number)[[i]], "\n")
+                            cat("Number of unique value: ", unique.values.number[[i]], "\n")
+                          }
+                          cat("\n")
+                          
+                          cat("PROBABILITIES ---------\n")
+                          cat("Prior probabilities: ", self$prior.probabilities, "\n")
+                          cat("Conditional probabilities: can be accessed using the $conditional.probabilities variable in your object \n")
                         },
                         
                         # check if columns are numerical and transform them in categorical
@@ -291,13 +374,17 @@ NaiveBayes <- R6Class("NaiveBayes",
 
 # TEST FACILE MARCHE
 
-nb <- NaiveBayes$new(data, , "A")
-
 # train data
 data <- data.frame(
   Feature1 = c("A", "B", "C","B","C","C"),
   Feature2 = c("X", "X", "Z","Y","Z","Z"),
   Class = c("Positive", "Negative","Positive","Positive","Negative","Positive")
+)
+
+data2 <- data.frame(
+  Feature1 = c("A", "B", NA,"B","C","C"),
+  Feature2 = c("X", "X", "Z","Y","Z","Z"),
+  Class = c("Positive", "Negative","Positive",NA,"Negative","Positive")
 )
 
 X=data[, c("Feature1", "Feature2")]
@@ -314,7 +401,7 @@ nb$fit(X, y)
 nb$conditional.probabilities
 p <- nb$predict(X)
 p
-pb <- nb$predict_proba(X)
+pb <- nb$predict_proba(new_data)
 pb
 
 
@@ -361,5 +448,23 @@ nbh$prior.probabilities
 nbh$conditional.probabilities
 nbh$predict(X_test)
 nbh$predict_proba(X_test)
+
+
+
+valeurs_uniques <- lapply(nbh$X, unique)
+valeurs_uniques
+
+longueur_elements <- lapply(valeurs_uniques, length)
+longueur_elements
+
+for (i in 1:length(longueur_elements)) {
+  print(names(longueur_elements)[[i]])
+  print(longueur_elements[[i]])
+}
+
+for (i in seq_along(longueur_elements)) {
+  cat("Feature: ", names(longueur_elements)[[i]], "\n")
+  cat("Number of unique value: ", longueur_elements[[i]], "\n")
+}
 
 
